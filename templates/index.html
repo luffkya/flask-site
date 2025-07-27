@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<h2>Добро пожаловать{% if session.username %}, {{ session.username }}{% endif %}!</h2>
+<p>Выберите игру или раздел выше.</p>
+{% endblock %}

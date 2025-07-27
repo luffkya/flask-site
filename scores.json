@@ -1,0 +1,12 @@
+[
+    {
+        "username": "owner",
+        "game": "snake",
+        "score": 3
+    },
+    {
+        "username": "owner",
+        "game": "2048",
+        "score": 668
+    }
+]

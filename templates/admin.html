@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Админка{% endblock %}
+{% block content %}
+<h2>Пользователи</h2>
+<table>
+    <tr><th>Имя</th><th>Роль</th><th>Действия</th></tr>
+    {% for user, info in users.items() %}
+    <tr>
+        <td>{{ user }}</td>
+        <td>{{ info.role }}</td>
+        <td>
+            {% if info.role != 'owner' %}
+            <form method="post" action="{{ url_for('admin_delete_user', username=user) }}" style="display:inline;">
+                <input type="submit" value="Удалить">
+            </form>
+            <form method="post" action="{{ url_for('admin_change_role', username=user) }}" style="display:inline;">
+                <input type="submit" value="Сменить роль">
+            </form>
+            {% else %}-{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

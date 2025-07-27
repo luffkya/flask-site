@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Сайт{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            document.getElementById('theme-icon').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        }
+        window.onload = function () {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark');
+            }
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>🌐 Мой мини-сайт</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('index') }}">🏠 Главная</a></li>
+            {% if session.username %}
+                <li><a href="{{ url_for('snake') }}">🐍 Змейка</a></li>
+                <li><a href="{{ url_for('game_2048') }}">🔢 2048</a></li>
+                <li><a href="{{ url_for('minesweeper') }}">💣 Сапёр</a></li>
+                <li><a href="{{ url_for('leaderboard') }}">🏆 Лидеры</a></li>
+                {% if session.role in ['admin', 'owner'] %}
+                    <li><a href="{{ url_for('admin_panel') }}">🛠️ Админка</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('logout') }}">🚪 Выйти</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login') }}">🔑 Вход</a></li>
+                <li><a href="{{ url_for('register') }}">✍️ Регистрация</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul>{% for message in messages %}
+              <li>{{ message }}</li>
+            {% endfor %}</ul>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

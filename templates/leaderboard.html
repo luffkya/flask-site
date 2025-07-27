@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Лидеры{% endblock %}
+{% block content %}
+<h2>🏆 Таблица лидеров</h2>
+
+{% for game, scores in games.items() %}
+<h3>{{ game|capitalize }}</h3>
+<table>
+  <tr><th>Игрок</th><th>Очки</th></tr>
+  {% for s in scores %}
+  <tr>
+    <td>{{ s.username }}</td>
+    <td>{{ s.score }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endfor %}
+
+{% endblock %}
