@@ -1,19 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Лидеры{% endblock %}
+{% block title %}Таблица лидеров{% endblock %}
 {% block content %}
+
 <h2>🏆 Таблица лидеров</h2>
 
-{% for game, scores in games.items() %}
-<h3>{{ game|capitalize }}</h3>
-<table>
-  <tr><th>Игрок</th><th>Очки</th></tr>
-  {% for s in scores %}
-  <tr>
-    <td>{{ s.username }}</td>
-    <td>{{ s.score }}</td>
-  </tr>
-  {% endfor %}
-</table>
+<form method="get" action="/leaderboard">
+  <label for="filter">Фильтр по игроку:</label>
+  <input type="text" id="filter" name="player" value="{{ request.args.get('player', '') }}">
+  <button type="submit">🔍 Найти</button>
+  {% if request.args.get('player') %}
+    <a href="/leaderboard">Сбросить</a>
+  {% endif %}
+</form>
+<br>
+
+{% for game, game_scores in scores.items() %}
+  <h3>
+    {% if game == 'snake' %}🐍 Змейка
+    {% elif game == '2048' %}🔢 2048
+    {% elif game == 'minesweeper' %}💣 Сапёр
+    {% elif game == 'platformer' %}🧱 Платформер
+    {% else %}🎮 {{ game|capitalize }}
+    {% endif %}
+  </h3>
+
+  {% if game_scores %}
+    <table border="1" cellpadding="5" cellspacing="0">
+      <tr>
+        <th>#</th>
+        <th>Игрок</th>
+        <th>Очки</th>
+      </tr>
+      {% for entry in game_scores %}
+        {% if not filter_player or entry.username.lower() == filter_player.lower() %}
+          <tr {% if session.get('username') == entry.username %} style="background-color: #d0f0d0;" {% endif %}>
+            <td>{{ loop.index }}</td>
+            <td>{{ entry.username }}</td>
+            <td>{{ entry.score }}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
+  {% else %}
+    <p><i>Пока нет результатов.</i></p>
+  {% endif %}
+  <br>
 {% endfor %}
 
 {% endblock %}

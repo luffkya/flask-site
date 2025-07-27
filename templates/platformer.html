@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Платформер{% endblock %}
+{% block content %}
+<h2>🧱 Платформер</h2>
+<p>Собирай монеты и избегай ям. Стрелки — движение, пробел — прыжок.</p>
+<canvas id="game" width="640" height="360" style="border: 1px solid black;"></canvas>
+<p id="score">Очки: 0</p>
+<p id="status"></p>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const GRAVITY = 0.5;
+const FLOOR = canvas.height - 40;
+
+let player = { x: 50, y: FLOOR - 40, w: 20, h: 40, vy: 0, jumping: false };
+let keys = {};
+let coins = [];
+let score = 0;
+let gameOver = false;
+
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+function spawnCoin() {
+  let x = Math.random() * (canvas.width - 20);
+  let y = FLOOR - 20 - Math.random() * 100;
+  coins.push({ x, y, w: 20, h: 20 });
+}
+
+function update() {
+  if (gameOver) return;
+
+  if (keys["ArrowLeft"]) player.x -= 4;
+  if (keys["ArrowRight"]) player.x += 4;
+  if (keys[" "] && !player.jumping) {
+    player.vy = -10;
+    player.jumping = true;
+  }
+
+  player.vy += GRAVITY;
+  player.y += player.vy;
+
+  if (player.y >= FLOOR - player.h) {
+    player.y = FLOOR - player.h;
+    player.vy = 0;
+    player.jumping = false;
+  }
+
+  for (let i = coins.length - 1; i >= 0; i--) {
+    let c = coins[i];
+    if (
+      player.x < c.x + c.w &&
+      player.x + player.w > c.x &&
+      player.y < c.y + c.h &&
+      player.y + player.h > c.y
+    ) {
+      coins.splice(i, 1);
+      score++;
+      document.getElementById("score").innerText = "Очки: " + score;
+    }
+  }
+
+  if (Math.random() < 0.01) spawnCoin();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // земля
+  ctx.fillStyle = "#654321";
+  ctx.fillRect(0, FLOOR, canvas.width, canvas.height - FLOOR);
+
+  // игрок
+  ctx.fillStyle = "blue";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // монеты
+  ctx.fillStyle = "gold";
+  for (let c of coins) {
+    ctx.beginPath();
+    ctx.arc(c.x + 10, c.y + 10, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  if (!gameOver) requestAnimationFrame(loop);
+}
+
+window.addEventListener("beforeunload", () => {
+  if (score > 0) sendScore(score);
+});
+
+function sendScore(score) {
+  fetch("/save_score", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ game: "platformer", score: score })
+  });
+}
+
+loop();
+</script>
+{% endblock %}

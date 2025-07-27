@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Owner Panel{% endblock %}
+{% block content %}
+<h2>👑 Панель Owner</h2>
+
+<h3>🔐 Пользователи</h3>
+<table border="1">
+<tr><th>Логин</th><th>Роль</th><th>Изменить</th></tr>
+{% for name, user in users.items() %}
+<tr>
+<td>{{ name }}</td>
+<td>{{ user.role }}</td>
+<td>
+<form method="POST" action="/owner/update_user">
+  <input type="hidden" name="old_username" value="{{ name }}">
+  <input name="new_username" value="{{ name }}" required>
+  <input name="new_password" type="password" placeholder="Новый пароль" required>
+  <button type="submit">Изменить</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>🏆 Таблица лидеров</h3>
+<table border="1">
+<tr><th>#</th><th>Игрок</th><th>Игра</th><th>Очки</th><th>Действия</th></tr>
+{% for s in scores %}
+<tr>
+<td>{{ loop.index0 }}</td>
+<td>{{ s.username }}</td>
+<td>{{ s.game }}</td>
+<td>
+<form method="POST" action="/owner/update_score" style="display:inline;">
+  <input type="hidden" name="index" value="{{ loop.index0 }}">
+  <input type="number" name="new_score" value="{{ s.score }}" min="0">
+  <button type="submit">💾</button>
+</form>
+</td>
+<td>
+<form method="POST" action="/owner/delete_score" style="display:inline;">
+  <input type="hidden" name="index" value="{{ loop.index0 }}">
+  <button type="submit">🗑</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

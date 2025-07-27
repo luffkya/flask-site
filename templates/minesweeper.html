@@ -2,5 +2,99 @@
 {% block title %}Сапёр{% endblock %}
 {% block content %}
 <h2>💣 Сапёр</h2>
-<p>Тут будет сапёр...</p>
+<p>Найди все пустые клетки, не подорвавшись!</p>
+<p>Очки = количество открытых безопасных клеток</p>
+<canvas id="board" width="320" height="320" style="border: 1px solid black;"></canvas>
+<p id="score">Очки: 0</p>
+<p id="status"></p>
+<script>
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const size = 10;
+const tileSize = 32;
+const mineCount = 10;
+let board = [];
+let revealed = [];
+let gameOver = false;
+let score = 0;
+
+// Инициализация
+function init() {
+    board = Array(size).fill().map(() => Array(size).fill(0));
+    revealed = Array(size).fill().map(() => Array(size).fill(false));
+    let placed = 0;
+    while (placed < mineCount) {
+        let x = Math.floor(Math.random() * size);
+        let y = Math.floor(Math.random() * size);
+        if (board[y][x] === 0) {
+            board[y][x] = 'M';
+            placed++;
+        }
+    }
+    // Расставим числа
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            if (board[y][x] !== 'M') {
+                let count = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        let nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < size && ny >= 0 && ny < size && board[ny][nx] === 'M') {
+                            count++;
+                        }
+                    }
+                }
+                board[y][x] = count;
+            }
+        }
+    }
+    draw();
+}
+
+function draw() {
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            ctx.fillStyle = revealed[y][x] ? "#ddd" : "#999";
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            if (revealed[y][x] && board[y][x] !== 0) {
+                ctx.fillStyle = "black";
+                ctx.fillText(board[y][x], x * tileSize + 12, y * tileSize + 20);
+            }
+        }
+    }
+}
+
+canvas.addEventListener("click", (e) => {
+    if (gameOver) return;
+    let x = Math.floor(e.offsetX / tileSize);
+    let y = Math.floor(e.offsetY / tileSize);
+    if (revealed[y][x]) return;
+    revealed[y][x] = true;
+    if (board[y][x] === 'M') {
+        gameOver = true;
+        document.getElementById("status").innerText = "💥 Вы проиграли!";
+        sendScore(score); // всё равно сохраняем
+    } else {
+        score++;
+        document.getElementById("score").innerText = "Очки: " + score;
+        if (score === (size * size - mineCount)) {
+            gameOver = true;
+            document.getElementById("status").innerText = "🏆 Победа!";
+            sendScore(score);
+        }
+    }
+    draw();
+});
+
+function sendScore(score) {
+    fetch("/save_score", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({game: "minesweeper", score: score})
+    });
+}
+
+init();
+</script>
 {% endblock %}

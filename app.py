@@ -1,40 +1,43 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, session, jsonify
 import json
 import os
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = 'some_secret_key'
-USERS_FILE = 'users.json'
+app.secret_key = 'your-secret-key'
 
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'w') as f:
-            json.dump({"owneruser": {"password": "ownerpass", "role": "owner"}}, f, indent=4)
-    with open(USERS_FILE, 'r') as f:
-        return json.load(f)
+# Загрузка пользователей
+if os.path.exists('users.json'):
+    with open('users.json') as f:
+        users = json.load(f)
+else:
+    users = {}
 
-def save_users(users):
-    with open(USERS_FILE, 'w') as f:
+# Загрузка очков
+if os.path.exists('scores.json'):
+    with open('scores.json') as f:
+        scores = json.load(f)
+else:
+    scores = []
+
+# Сохраняем пользователей
+def save_users():
+    with open('users.json', 'w') as f:
         json.dump(users, f, indent=4)
 
+# Сохраняем очки
+def save_scores():
+    with open('scores.json', 'w') as f:
+        json.dump(scores, f, indent=4)
+
+# Проверка входа
 def login_required(f):
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def wrap(*args, **kwargs):
         if 'username' not in session:
-            flash('Пожалуйста, войдите в систему')
-            return redirect(url_for('login'))
+            return redirect('/login')
         return f(*args, **kwargs)
-    return decorated
-
-def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if session.get('role') not in ('admin', 'owner'):
-            flash('Доступ запрещён')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated
+    return wrap
 
 @app.route('/')
 def index():
@@ -43,101 +46,38 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username'].strip()
-        password = request.form['password'].strip()
-        users = load_users()
+        username = request.form['username']
+        password = request.form['password']
         if username in users:
-            flash('Пользователь уже существует')
-            return redirect(url_for('register'))
+            return "Пользователь уже существует"
         users[username] = {'password': password, 'role': 'user'}
-        save_users(users)
-        flash('Регистрация успешна')
-        return redirect(url_for('login'))
+        save_users()
+        return redirect('/login')
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].strip()
-        password = request.form['password'].strip()
-        users = load_users()
+        username = request.form['username']
+        password = request.form['password']
         user = users.get(username)
         if user and user['password'] == password:
             session['username'] = username
-            session['role'] = user.get('role', 'user')
-            return redirect(url_for('index'))
-        flash('Неверный логин или пароль')
+            return redirect('/')
+        return "Неверный логин или пароль"
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    session.clear()
-    flash('Вы вышли из системы')
-    return redirect(url_for('index'))
-
-@app.route('/admin')
-@admin_required
-def admin_panel():
-    users = load_users()
-    return render_template('admin.html', users=users)
-
-@app.route('/admin/delete/<username>', methods=['POST'])
-@admin_required
-def admin_delete_user(username):
-    users = load_users()
-    if username in users and users[username]['role'] != 'owner':
-        users.pop(username)
-        save_users(users)
-        flash(f'{username} удалён')
-    else:
-        flash('Нельзя удалить владельца или несуществующего пользователя')
-    return redirect(url_for('admin_panel'))
-
-@app.route('/admin/change_role/<username>', methods=['POST'])
-@admin_required
-def admin_change_role(username):
-    users = load_users()
-    if username in users and users[username]['role'] != 'owner':
-        current = users[username]['role']
-        users[username]['role'] = 'admin' if current == 'user' else 'user'
-        save_users(users)
-        flash(f'Роль {username} обновлена')
-    else:
-        flash('Нельзя изменить владельца')
-    return redirect(url_for('admin_panel'))
-
-@app.route('/save_score', methods=['POST'])
-@login_required
-def save_score():
-    data = request.get_json()
-    game = data.get('game')
-    score = int(data.get('score'))
-
-    if not os.path.exists('scores.json'):
-        with open('scores.json', 'w') as f:
-            json.dump([], f)
-
-    with open('scores.json', 'r') as f:
-        scores = json.load(f)
-
-    scores.append({
-        "username": session['username'],
-        "game": game,
-        "score": score
-    })
-
-    with open('scores.json', 'w') as f:
-        json.dump(scores, f, indent=4)
-
-    return '', 204
-
+    session.pop('username', None)
+    return redirect('/')
 
 @app.route('/snake')
 @login_required
 def snake():
     return render_template('snake.html')
 
-@app.route('/game_2048')
+@app.route('/2048')
 @login_required
 def game_2048():
     return render_template('2048.html')
@@ -147,24 +87,108 @@ def game_2048():
 def minesweeper():
     return render_template('minesweeper.html')
 
-@app.route('/leaderboard')
+@app.route('/platformer')
 @login_required
+def platformer():
+    return render_template('platformer.html')
+
+
+@app.route('/save_score', methods=['POST'])
+@login_required
+def save_score():
+    data = request.get_json()
+    scores.append({
+        "username": session["username"],
+        "game": data.get("game"),
+        "score": data.get("score")
+    })
+    save_scores()
+    return '', 204
+
+@app.route('/leaderboard')
 def leaderboard():
-    if os.path.exists('scores.json'):
-        with open('scores.json') as f:
-            scores = json.load(f)
-    else:
-        scores = []
+    filter_player = request.args.get('player', '').strip()
+    categories = {"snake": [], "2048": [], "minesweeper": [], "platformer": []}
 
-    games = {'snake': [], '2048': [], 'minesweeper': []}
-    for s in scores:
-        games[s['game']].append(s)
+    for score in scores:
+        game = score.get("game")
+        if game in categories:
+            categories[game].append(score)
 
-    for game in games:
-        games[game] = sorted(games[game], key=lambda x: x['score'], reverse=True)[:10]
+    for game_scores in categories.values():
+        game_scores.sort(key=lambda x: x["score"], reverse=True)
 
-    return render_template('leaderboard.html', games=games)
+    return render_template("leaderboard.html", scores=categories, filter_player=filter_player)
 
 
+
+# ----------- OWNER PANEL ----------------
+
+@app.route('/owner')
+@login_required
+def owner_panel():
+    username = session['username']
+    if users.get(username, {}).get('role') != 'owner':
+        return "Доступ запрещён", 403
+    return render_template('owner.html', users=users, scores=scores)
+
+@app.route('/owner/update_user', methods=['POST'])
+@login_required
+def update_user():
+    if users[session['username']]['role'] != 'owner':
+        return "Доступ запрещён", 403
+
+    old_username = request.form['old_username']
+    new_username = request.form['new_username']
+    new_password = request.form['new_password']
+
+    if old_username not in users:
+        return "Пользователь не найден", 404
+
+    user_data = users.pop(old_username)
+    user_data['password'] = new_password
+    users[new_username] = user_data
+    save_users()
+    return redirect('/owner')
+
+@app.route('/owner/delete_user/<username>', methods=['POST'])
+@login_required
+def delete_user(username):
+    if users[session['username']]['role'] != 'owner':
+        return "Доступ запрещён", 403
+    if users[username]['role'] == 'owner':
+        return "Нельзя удалить владельца", 403
+    users.pop(username)
+    save_users()
+    return redirect('/owner')
+
+@app.route('/owner/update_score', methods=['POST'])
+@login_required
+def update_score():
+    if users[session['username']]['role'] != 'owner':
+        return "Доступ запрещён", 403
+
+    index = int(request.form['index'])
+    new_score = int(request.form['new_score'])
+
+    if 0 <= index < len(scores):
+        scores[index]['score'] = new_score
+        save_scores()
+    return redirect('/owner')
+
+@app.route('/owner/delete_score', methods=['POST'])
+@login_required
+def delete_score():
+    if users[session['username']]['role'] != 'owner':
+        return "Доступ запрещён", 403
+
+    index = int(request.form['index'])
+
+    if 0 <= index < len(scores):
+        scores.pop(index)
+        save_scores()
+    return redirect('/owner')
+
+# ------------- RUN -----------------
 if __name__ == '__main__':
     app.run(debug=True)
